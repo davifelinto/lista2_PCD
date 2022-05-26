@@ -1,4 +1,8 @@
-// const read = require('readline-sync')
-const csvs = require('./csv_funcs');
+const fs = require('fs'); 
+const {parse} = require('csv-parser');
 
-csvs.readCSV('cidade_populacao.csv');
+fs.createReadStream("./cidade_populacao.csv")
+.pipe(parse({ delimiter: ",", from_line: 2 }))
+.on("data", function (row) {
+  console.log(row);
+})
