@@ -1,13 +1,14 @@
-CREATE DATABASE Lista2;
+CREATE DATABASE IF NOT EXISTS ListaTeste;
 
+use ListaTeste;
 CREATE TABLE IF NOT EXISTS uf (
 id INT,
  sigla VARCHAR(2),
  nome_uf VARCHAR(50),
  primary key (id));
-
+    
 CREATE TABLE IF NOT EXISTS cidade (
-id INT,
+id INT auto_increment,
  uf_id INT,
  nome VARCHAR(255),
  populacao INT,
@@ -20,7 +21,7 @@ id INT,
 	references uf (id));
 
 CREATE TABLE IF NOT EXISTS empresa (
-id INT,
+id INT auto_increment,
  cidade_id INT,
  slug VARCHAR(255),
  nome_fantasia VARCHAR(255),

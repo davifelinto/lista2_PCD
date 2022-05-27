@@ -1,19 +1,19 @@
 // Esse método de leitura tá funcionando. filename = "./nome_arquivo.csv"
 function readCSV(filename){
     const fs = require("fs");
-    const { parse } = require("csv-parse");
-
+    const parser = require("csv-parser");
+    
     fs.createReadStream(filename)
-    .pipe(parse({ delimiter: ",", from_line: 2 }))
-    .on("data", function (row) {
+      .pipe(parser({ delimiter: ",", from_line: 2 }))
+      .on("data", function (row) {
         console.log(row);
-    })
-    .on("end", function () {
+      })
+      .on("end", function () {
         console.log("finished");
-    })
-    .on("error", function (error) {
+      })
+      .on("error", function (error) {
         console.log(error.message);
-    });
+      });
 }
 
 
@@ -49,6 +49,36 @@ function writeCSVfast(data){
     fastcsv
     .write(data, { headers: true })
     .pipe(ws);
+}
+
+function stringfyCSV(file){
+    
+    const fs = require("fs");
+    const { stringify } = require("csv-stringify");
+    const db = require("./db");
+    const writableStream = fs.createWriteStream(file);
+
+    const columns = [
+    "nome_fantasia",
+    "slug",
+    "inicio_atividades",
+    "porte_empresa",
+    "nome_cidade",
+    "sigla_uf",
+    "populacao_cidade",
+    "latitude_cidade",
+    "longitude_cidade",
+    ];
+
+    const stringifier = stringify({ header: true, columns: columns });
+    db.each(`select * from migration`, (error, row) => {
+    if (error) {
+        return console.log(error.message);
+    }
+    stringifier.write(row);
+    });
+    stringifier.pipe(writableStream);
+    console.log("Finished writing data");
 }
 
 module.exports = {
