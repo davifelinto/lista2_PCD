@@ -19,6 +19,34 @@ const con = mysql.createConnection({
   multipleStatements: true
 });
 
+// Funcao do calculo da distancia baseado nas coordenadas, retorna kilometragem com 2 casas decimais
+function distCoordenadasKm(position1, position2) {
+    "use strict";
+    var deg2rad = function (deg) { return deg * (Math.PI / 180); },
+        R = 6371,
+        dLat = deg2rad(position2.lat - position1.lat),
+        dLng = deg2rad(position2.lng - position1.lng),
+        a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+            + Math.cos(deg2rad(position1.lat))
+            * Math.cos(deg2rad(position1.lat))
+            * Math.sin(dLng / 2) * Math.sin(dLng / 2),
+        c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return ((R * c).toFixed(2));
+}
+
+// Dicionarios das coordenadas das cidades "destino"
+const coord_1 = {lat: -12.971111, lng: -38.510833}// Salvador
+const coord_2 = {lat: -12.266667, lng: -38.966667}// Feira de Santana
+const coord_3 = {lat: -14.866111, lng: -40.839444}// Vitória da Conquista
+const coord_4 = {lat: -12.696389, lng: -38.323333}// Camacari
+
+// Como o dict das coordenadas tem que ir pra função
+// var distancia = (distCoordenadasKm(
+//    {lat: -23.522490, lng: -46.736600},
+//    {lat: -23.4446654, lng: -46.5319316}
+// ));
+// console.log(distancia);
+
 // Um unico connect para fazer todas as operacoes
 con.connect(async function(err) {
     if (err) throw err;
@@ -55,6 +83,10 @@ con.connect(async function(err) {
                             cnae_fiscal VARCHAR(255),\
                             cep VARCHAR(255),\
                             porte INT,\
+                            dist_1 DOUBLE,\
+                            dist_2 DOUBLE,\
+                            dist_3 DOUBLE,\
+                            dist_4 DOUBLE,\
                             primary key (id),\
                             foreign key (cidade_id)\
                                 references cidade (id));";
@@ -91,6 +123,7 @@ con.connect(async function(err) {
         .on("data", function (row) {
             con.query(sql, [row[4], row[1], row[2], row[3], row[0], row[5]], function (err, result) {
                 if (err) throw err;
+                
                 console.log("cidade record inserted");
                 resolve();
             });
@@ -109,15 +142,19 @@ con.connect(async function(err) {
         });
     })
 
-    //Ler e inseir empresas_bahia - ok
+    //Ler e inseir empresas_bahia - nao entendo como a conta vai pra frente ainda
     await new Promise((resolve, reject) => {
         var sql = "INSERT INTO listateste.empresa (slug, nome_fantasia, dt_inicioatividade, cnae_fiscal, cep, porte, municipio_siafi)\
                      VALUES (?, ?, ?, ? , ?, ?, ?)"
+                     // , dist_1, dist_2, dist_3, dist_4
         
-        fs.createReadStream("res/empresas_bahia.csv")
+        fs.createReadStream("res/empresas_bahia_lista_3.csv")
         .pipe(parse({ delimiter: ",", from_line: 2 }))
         .on("data", function (row) {
-            con.query(sql, [slug(row[0]), row[0], row[1], row[2], row[3], row[5], row[4]], function (err, result) {
+            con.query(sql, [slug(row[0]), row[0], row[1], row[2], row[3], row[5], row[4],
+                            // distCoordenadasKm(,coord_1),distCoordenadasKm(,coord_2),
+                            // distCoordenadasKm(,coord_3),distCoordenadasKm(,coord_4)
+                            ], function (err, result) {
                 if (err) throw err;
                 console.log("Empresa record inserted");
                 resolve();
@@ -159,12 +196,14 @@ con.connect(async function(err) {
     // Gravacao de arquivo csv - ok
     await new Promise((resolve, reject) => {
 
-        sql = "SELECT empresa.nome_fantasia, empresa.slug, empresa.dt_inicioatividade as inicio_atividades, empresa.porte as porte_empresa, cidade.nome as nome_cidade, uf.sigla as sigla_uf, cidade.populacao as populacao_cidade, cidade.latitude as latitude_cidade, cidade.longitude as longitude_cidade\
-        FROM uf\
-        JOIN cidade\
-            ON uf.id = cidade.uf_id\
-        RIGHT JOIN empresa\
-            ON cidade.id = empresa.cidade_id"
+        sql = "SELECT empresa.nome_fantasia, empresa.slug, empresa.dt_inicioatividade as inicio_atividades,\
+                        empresa.porte as porte_empresa, cidade.nome as nome_cidade, uf.sigla as sigla_uf,\
+                        cidade.populacao as populacao_cidade, cidade.latitude as latitude_cidade, cidade.longitude as longitude_cidade\
+                FROM uf\
+                JOIN cidade\
+                    ON uf.id = cidade.uf_id\
+                RIGHT JOIN empresa\
+                    ON cidade.id = empresa.cidade_id"
 
         con.query(sql, function (err, data) {
         if (err) throw err;
@@ -183,10 +222,16 @@ con.connect(async function(err) {
         });
     })
 
-    // Desconeta do banco - ok
     await new Promise((resolve, reject) => {
-        con.end();
-        console.log("Disonnected!");
-        resolve();
+        con.end((err) => {
+            if (err) {
+                console.error('Error during disconnection', err.stack)
+                return reject(err)
+            }
+            console.log('Disconnected sucessfuly!')
+            return resolve()
+        })
     })
 });
+
+
